@@ -1,0 +1,59 @@
+import os
+import requests
+from bs4 import BeautifulSoup
+from openpyxl import Workbook
+from selenium import webdriver
+
+url = 'https://www.avito.ru/krasnodar/noutbuki'
+
+try:
+    # получаем текущее окно браузера
+    driver = webdriver.Chrome()
+
+    # загружаем страницу
+    driver.get(url)
+
+    # создаем объект soup
+    soup = BeautifulSoup(driver.page_source, 'html.parser')
+
+    # проверка наличия данных на странице
+    if len(soup.find_all(class_="snippet-horizontal")) > 0:
+        # создаем новый Excel-файл и получаем доступ к его активному листу
+        workbook = Workbook()
+        worksheet = workbook.active
+
+        # задаем названия столбцов и заполняем данные
+        worksheet['A1'] = 'Заголовок'
+        worksheet['B1'] = 'Цена'
+        worksheet['C1'] = 'Описание'
+
+        # поиск всех элементов списка объявлений
+        items = soup.find_all(class_="iva-item-body-NPl6W")
+
+        # цикл для перебора каждого элемента списка объявлений
+        for index, item in enumerate(items, start=2):
+            # поиск заголовка объявления
+            title = item.find(class_='snippet-link').get_text()
+
+            # поиск цены
+            price = item.find(class_='snippet-price').get_text()
+
+            # поиск описания
+            description = item.find(class_='snippet-text').get_text()
+
+            # записываем полученные данные в соответствующие ячейки таблицы
+            worksheet.cell(row=index, column=1, value=title)
+            worksheet.cell(row=index, column=2, value=price)
+            worksheet.cell(row=index, column=3, value=description)
+
+        # получаем путь к рабочему столу и сохраняем файл Excel на рабочем столе
+        desktop = os.path.join(os.path.join(os.environ['USERPROFILE']), 'Desktop')
+        workbook.save(os.path.join(desktop, 'avito.xlsx'))
+        print('Данные успешно сохранены в файле avito.xlsx на рабочем столе')
+    else:
+        print('Ошибка при получении данных: данные не найдены')
+except Exception as e:
+    print('Ошибка:', e)
+finally:
+    # закрываем браузер после выполнения кода
+    driver.quit()
